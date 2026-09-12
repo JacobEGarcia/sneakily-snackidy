@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SNEAKILY SNACKIDY</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,500;0,700;0,900;1,900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:#070a12; overflow:hidden; font-family:'IBM Plex Mono',monospace; }
+  #game { display:block; width:100vw; height:100vh; touch-action:none; }
+  .overlay {
+    position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at 50% 38%, rgba(18,24,44,.94), rgba(5,7,13,.98));
+    color:#e8ecf4; text-align:center; z-index:10; padding:24px;
+  }
+  .hidden { display:none !important; }
+  .moon { margin-bottom:20px; }
+  h1 { font-family:'Archivo',sans-serif; font-weight:900; font-style:italic; font-size:clamp(30px,6vw,60px); letter-spacing:.02em; color:#f2c14e; margin-bottom:6px; }
+  h2 { font-size:clamp(11px,1.8vw,14px); letter-spacing:.42em; color:#7d90b5; margin-bottom:30px; font-weight:500; text-transform:uppercase; }
+  .rules { max-width:560px; line-height:1.9; font-size:clamp(12px,1.6vw,14px); color:#a8b4cd; margin-bottom:34px; }
+  .rules b { color:#f2c14e; font-weight:600; }
+  .btn {
+    font-family:'Archivo',sans-serif; font-weight:700; font-size:clamp(13px,1.8vw,16px); letter-spacing:.18em; text-transform:uppercase; padding:15px 44px; cursor:pointer;
+    background:#f2c14e; color:#171207; border:none; border-radius:8px; transition:transform .15s,opacity .15s;
+  }
+  .btn:hover { transform:translateY(-2px); opacity:.92; }
+  .stat { font-size:clamp(13px,2vw,16px); color:#a8b4cd; line-height:2.1; }
+  .stat b { color:#f2c14e; font-weight:600; }
+  #muteBtn { position:fixed; top:12px; right:14px; z-index:20; background:none; border:1px solid #3a4358; color:#7d90b5;
+    font-family:inherit; font-size:11px; padding:7px 13px; border-radius:6px; cursor:pointer; letter-spacing:.12em; text-transform:uppercase; }
+  #muteBtn:hover { color:#f2c14e; border-color:#f2c14e; }
+  .small { font-size:10.5px; color:#55617c; margin-top:26px; letter-spacing:.14em; text-transform:uppercase; }
+  #touchUI { position:fixed; bottom:0; left:0; right:0; display:none; z-index:5; padding:14px; justify-content:space-between; pointer-events:none; }
+  #touchUI .tbtn { pointer-events:auto; font-family:'Archivo',sans-serif; font-weight:700; font-size:13px; letter-spacing:.12em; text-transform:uppercase; padding:18px 22px;
+    background:rgba(18,24,44,.8); color:#f2c14e; border:1.5px solid rgba(242,193,78,.55); border-radius:10px; user-select:none; }
+  body.touch #touchUI { display:flex; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<button id="muteBtn">SOUND: ON</button>
+<div id="touchUI">
+  <button class="tbtn" id="tHide">HIDE</button>
+  <button class="tbtn" id="tRaid">RAID FRIDGE</button>
+</div>
+
+<div class="overlay" id="titleScreen">
+  <svg class="moon" width="72" height="72" viewBox="0 0 72 72" fill="none"><circle cx="38" cy="34" r="20" fill="#f2c14e"/><circle cx="31" cy="29" r="20" fill="#070a12"/><path d="M52 48 q6 2 10 0" stroke="#f2c14e" stroke-width="2.5" stroke-linecap="round"/><circle cx="57" cy="14" r="1.6" fill="#7d90b5"/><circle cx="64" cy="22" r="1.2" fill="#7d90b5"/><circle cx="16" cy="54" r="1.4" fill="#7d90b5"/></svg>
+  <h1>Sneakily Snackidy</h1>
+  <h2>A midnight fridge tale</h2>
+  <div class="rules">
+    It's midnight. The fridge is calling. <b>She</b> is asleep down the hall.<br><br>
+    <b>HOLD CLICK / E</b> — raid the fridge and eat. Fill the SNACK bar.<br>
+    <b>SPACE</b> — dive behind the counter when you hear her coming.<br>
+    Eating is <b>loud</b>. Max out the NOISE bar and she comes running.<br>
+    Get caught mid-snack: <b>3 strikes and you're done</b>.<br><br>
+    Every night you survive, you come back... heavier. Heavier is slower. Heavier is louder.
+  </div>
+  <button class="btn" id="startBtn">SNEAK IN</button>
+  <div class="small">headphones recommended - sound is your only warning</div>
+</div>
+
+<div class="overlay hidden" id="nightScreen">
+  <h1 id="nightTitle">NIGHT 1</h1>
+  <h2 id="nightWeight">THIN</h2>
+  <div class="stat" id="nightDesc"></div>
+  <br>
+  <button class="btn" id="nightBtn">BEGIN</button>
+</div>
+
+<div class="overlay hidden" id="overScreen">
+  <h1 style="color:#ff6a5e">CAUGHT</h1>
+  <h2 id="overSub">THREE STRIKES</h2>
+  <div class="stat" id="overStats"></div>
+  <br>
+  <button class="btn" id="retryBtn">SNEAK AGAIN</button>
+</div>
+
+<div class="overlay hidden" id="winScreen">
+  <h1>THE FRIDGE IS YOURS</h1>
+  <h2>ALL NIGHTS SURVIVED</h2>
+  <div class="stat" id="winStats"></div>
+  <br>
+  <button class="btn" id="againBtn">PLAY AGAIN</button>
+</div>
+
+<script>
+(function(){
+"use strict";
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W=0, H=0, DPR=1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W*DPR; canvas.height = H*DPR;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize); resize();
+
+// ---------- audio ----------
+let AC=null, master=null, muted=false;
+function audio(){
+  if(AC) return;
+  AC = new (window.AudioContext||window.webkitAudioContext)();
+  master = AC.createGain(); master.gain.value = 0.55; master.connect(AC.destination);
+}
+function env(g, t0, a, peak, d){
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(peak, t0+a);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+a+d);
+}
+function tone(freq, type, a, peak, d, dest){
+  if(!AC||muted) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type||'sine'; o.frequency.value = freq;
+  o.connect(g); g.connect(dest||master);
+  const t = AC.currentTime;
+  env(g, t, a||0.01, peak||0.2, d||0.2);
+  o.start(t); o.stop(t+(a||0.01)+(d||0.2)+0.05);
+}
+function noiseBurst(dur, filterFreq, peak, type){
+  if(!AC||muted) return null;
+  const len = Math.max(1, Math.floor(AC.sampleRate*dur));
+  const buf = AC.createBuffer(1, len, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i] = Math.random()*2-1;
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const f = AC.createBiquadFilter(); f.type = type||'lowpass'; f.frequency.value = filterFreq||800;
+  const g = AC.createGain();
+  src.connect(f); f.connect(g); g.connect(master);
+  const t = AC.currentTime;
+  env(g, t, 0.005, peak||0.2, dur);
+  src.start(t); src.stop(t+dur+0.05);
+  return {src,f,g};
+}
+// continuous fridge hum
+let humNodes=null;
+function fridgeHum(on){
+  if(!AC||muted) on=false;
+  if(on && !humNodes){
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type='sawtooth'; o.frequency.value=58;
+    const f = AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=180;
+    o.connect(f); f.connect(g); g.connect(master);
+    g.gain.setValueAtTime(0.0001, AC.currentTime);
+    g.gain.linearRampToValueAtTime(0.05, AC.currentTime+0.4);
+    o.start();
+    humNodes={o,g};
+  } else if(!on && humNodes){
+    humNodes.g.gain.linearRampToValueAtTime(0.0001, AC.currentTime+0.3);
+    const h=humNodes; humNodes=null;
+    setTimeout(()=>{ try{h.o.stop();}catch(e){} }, 400);
+  }
+}
+function footstep(dist){ // dist 0 (far) .. 1 (close)
+  const p = 0.05 + dist*0.3;
+  noiseBurst(0.09, 300+dist*500, p);
+  if(dist>0.5) tone(70,'sine',0.005,0.12*dist,0.09);
+}
+function creak(){ tone(180+Math.random()*120,'sawtooth',0.05,0.035,0.5); }
+function munch(){
+  noiseBurst(0.07, 1400, 0.10, 'bandpass');
+  if(Math.random()<0.4) setTimeout(()=>noiseBurst(0.05,900,0.06,'bandpass'), 60);
+}
+function ding(){ tone(880,'sine',0.01,0.15,0.35); tone(1320,'sine',0.01,0.1,0.5); }
+function strikeSnd(){ tone(160,'square',0.01,0.25,0.4); setTimeout(()=>tone(110,'square',0.01,0.25,0.6),180); }
+function caughtSting(){ [220,175,147,110].forEach((f,i)=>setTimeout(()=>tone(f,'sawtooth',0.01,0.2,0.3), i*140)); }
+function heart(){ tone(52,'sine',0.008,0.28,0.12); setTimeout(()=>tone(48,'sine',0.008,0.2,0.14),190); }
+function winJingle(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,'triangle',0.02,0.18,0.5), i*160)); }
+
+document.getElementById('muteBtn').addEventListener('click', function(){
+  muted = !muted; this.textContent = muted ? 'SOUND: OFF' : 'SOUND: ON';
+  if(muted) fridgeHum(false);
+});
+
+// ---------- game state ----------
+const STAGE = [
+  {name:'THIN',            w:1.00, hideTime:0.35, noisePer:11, decay:13, desc:'Light on your feet. The floor barely knows you.'},
+  {name:'COMICALLY FAT',   w:1.85, hideTime:0.75, noisePer:19, decay:9,  desc:'The floorboards gossip about you now.'},
+  {name:'500 POUND LIFE',  w:2.75, hideTime:1.30, noisePer:28, decay:6,  desc:'Every step is a headline. The fridge knows your gait.'}
+];
+const GOAL = 100;
+const N_NIGHTS = 3;
+
+const G = {
+  mode:'title',          // title | night | play | over | win
+  night:1, stage:0,
+  snack:0, noise:0, strikes:0,
+  raiding:false, hidden:0,   // hidden: 0..1 progress
+  hideHeld:false, raidHeld:false,
+  warden:{ state:'away', t:0, next:8+Math.random()*8, peek:0 },
+  crumbs:[], zzz:[], message:'', messageT:0,
+  eatenTotal:0, tPlay:0, shake:0, caughtFlash:0,
+  fridgeOpen:0
+};
+
+function startNight(n){
+  G.night=n; G.stage=n-1; G.snack=0; G.noise=0; G.strikes=0;
+  G.raiding=false; G.hidden=0; G.hideHeld=false; G.raidHeld=false;
+  G.warden={state:'away',t:0,next:7+Math.random()*8,peek:0};
+  G.crumbs=[]; G.tPlay=0; G.fridgeOpen=0;
+  G.mode='night';
+  document.getElementById('nightTitle').textContent='NIGHT '+n+' OF '+N_NIGHTS;
+  document.getElementById('nightWeight').textContent=STAGE[G.stage].name;
+  document.getElementById('nightDesc').innerHTML=STAGE[G.stage].desc+'<br>Fill the snack bar. Do not get caught.';
+  show('nightScreen');
+}
+function show(id){
+  ['titleScreen','nightScreen','overScreen','winScreen'].forEach(s=>{
+    document.getElementById(s).classList.toggle('hidden', s!==id);
+  });
+}
+function hideAll(){ show('__none__'); }
+
+function msg(t){ G.message=t; G.messageT=2.6; }
+
+function strike(){
+  G.strikes++;
+  G.snack = Math.max(0, G.snack-25);
+  G.noise = 0;
+  G.shake = 0.6; G.caughtFlash = 1;
+  strikeSnd();
+  fridgeHum(false);
+  G.raiding=false;
+  if(G.strikes>=3){
+    G.mode='over';
+    caughtSting();
+    document.getElementById('overSub').textContent = 'CAUGHT ON NIGHT '+G.night;
+    document.getElementById('overStats').innerHTML =
+      'snacks eaten: <b>'+G.eatenTotal+'</b><br>final form: <b>'+STAGE[G.stage].name+'</b><br><br>"SNACKS? AT MIDNIGHT? IN MY HOUSE?"';
+    show('overScreen');
+  } else {
+    msg('CAUGHT! STRIKE '+G.strikes+' OF 3 - she confiscates your snacks');
+  }
+  G.warden.state='leaving'; G.warden.t=0;
+}
+
+// ---------- input ----------
+const isTouch = ('ontouchstart' in window);
+if(isTouch) document.body.classList.add('touch');
+window.addEventListener('keydown', e=>{
+  if(e.code==='Space'){ G.hideHeld=true; e.preventDefault(); }
+  if(e.code==='KeyE'){ G.raidHeld=true; }
+  if(e.code==='Enter'){
+    const vis = ['titleScreen','nightScreen','overScreen','winScreen'].find(s=>!document.getElementById(s).classList.contains('hidden'));
+    if(vis) document.querySelector('#'+vis+' .btn').click();
+  }
+});
+window.addEventListener('keyup', e=>{
+  if(e.code==='Space') G.hideHeld=false;
+  if(e.code==='KeyE') G.raidHeld=false;
+});
+let mouseDown=false;
+canvas.addEventListener('mousedown', ()=>{ mouseDown=true; });
+window.addEventListener('mouseup', ()=>{ mouseDown=false; });
+const tHide=document.getElementById('tHide'), tRaid=document.getElementById('tRaid');
+['touchstart','mousedown'].forEach(ev=>{
+  tHide.addEventListener(ev, e=>{ e.preventDefault(); G.hideHeld=true; });
+  tRaid.addEventListener(ev, e=>{ e.preventDefault(); G.raidHeld=true; });
+});
+['touchend','touchcancel','mouseup','mouseleave'].forEach(ev=>{
+  tHide.addEventListener(ev, ()=>{ G.hideHeld=false; });
+  tRaid.addEventListener(ev, ()=>{ G.raidHeld=false; });
+});
+canvas.addEventListener('touchstart', e=>{ e.preventDefault(); G.raidHeld=true; }, {passive:false});
+canvas.addEventListener('touchend', e=>{ e.preventDefault(); G.raidHeld=false; });
+
+document.getElementById('startBtn').addEventListener('click', ()=>{ audio(); G.eatenTotal=0; startNight(1); });
+document.getElementById('nightBtn').addEventListener('click', ()=>{ hideAll(); G.mode='play'; });
+document.getElementById('retryBtn').addEventListener('click', ()=>{ G.eatenTotal=0; startNight(1); });
+document.getElementById('againBtn').addEventListener('click', ()=>{ G.eatenTotal=0; startNight(1); });
+// dev hook: #play jumps straight into night 1
+if(location.hash==='#play'){ G.eatenTotal=0; startNight(1); hideAll(); G.mode='play'; }
+window.addEventListener('blur', ()=>{ G.hideHeld=false; G.raidHeld=false; mouseDown=false; });
+
+// ---------- layout helpers ----------
+function layout(){
+  const gY = H*0.78;                    // floor line
+  const fridgeX = W*0.62, fridgeW = Math.min(150, W*0.16), fridgeH = H*0.42;
+  const counterX = W*0.16, counterW = W*0.24, counterH = H*0.16;
+  const doorX = W*0.40, doorW = Math.min(110, W*0.11), doorH = H*0.38;
+  return {gY, fridgeX, fridgeW, fridgeH, counterX, counterW, counterH, doorX, doorW, doorH};
+}
+
+// ---------- update ----------
+let lastMunch=0, lastHeart=0, lastStep=0;
+function update(dt){
+  if(G.mode!=='play') return;
+  const st = STAGE[G.stage];
+  G.tPlay += dt;
+
+  // hide progress
+  const target = G.hideHeld ? 1 : 0;
+  const rate = dt / st.hideTime;
+  G.hidden += (target - G.hidden>0? 1:-1) * rate * Math.sign(target-G.hidden || 0);
+  G.hidden = Math.max(0, Math.min(1, G.hidden));
+
+  // raiding
+  const wantRaid = (G.raidHeld || mouseDown) && G.hidden < 0.5;
+  if(wantRaid && !G.raiding){ G.raiding=true; fridgeHum(true); noiseBurst(0.15,600,0.08); }
+  if(!wantRaid && G.raiding){ G.raiding=false; fridgeHum(false); }
+  if(G.raiding && G.hidden>=0.5){ G.raiding=false; fridgeHum(false); }
+
+  if(G.raiding){
+    G.snack = Math.min(GOAL, G.snack + dt*9);
+    G.noise = Math.min(100, G.noise + dt*st.noisePer);
+    G.fridgeOpen = Math.min(1, G.fridgeOpen + dt*4);
+    const now = performance.now();
+    if(now-lastMunch > 380){ lastMunch=now; munch(); G.eatenTotal++; spawnCrumb(); }
+  } else {
+    G.fridgeOpen = Math.max(0, G.fridgeOpen - dt*5);
+  }
+
+  // noise decay (slower when fat)
+  G.noise = Math.max(0, G.noise - dt*st.decay);
+  // movement noise: hiding/unhiding creaks
+  if(G.hidden>0 && G.hidden<1 && Math.random()<dt*st.noisePer*0.10){ creak(); G.noise=Math.min(100,G.noise+4); }
+
+  // warden AI
+  const wd = G.warden;
+  wd.t += dt;
+  if(wd.state==='away'){
+    if(G.noise>=100){ wd.state='approach'; wd.t=0; wd.fast=true; G.noise=55; msg('TOO LOUD - footsteps, fast'); }
+    else if(wd.t>wd.next){ wd.state='approach'; wd.t=0; wd.fast=false; }
+  } else if(wd.state==='approach'){
+    const T = wd.fast? 1.8 : 3.6;
+    const prog = Math.min(1, wd.t/T);
+    const now = performance.now();
+    if(now-lastStep > 520 - prog*330){ lastStep=now; footstep(prog); }
+    if(now-lastHeart > 900 - prog*450){ lastHeart=now; if(prog>0.35) heart(); }
+    if(prog>=1){ wd.state='peek'; wd.t=0; wd.peek = 2.2 + Math.random()*1.2; tone(90,'sine',0.05,0.15,0.8); }
+  } else if(wd.state==='peek'){
+    if(wd.t>wd.peek){
+      if(G.hidden>0.85){ wd.state='leaving'; wd.t=0; msg('...she squints... goes back to bed'); }
+      else strike();
+    }
+  } else if(wd.state==='leaving'){
+    if(wd.t>1.6){ wd.state='away'; wd.t=0; wd.next = Math.max(5, 16 - G.night*2) + Math.random()*8; }
+  }
+
+  if(G.shake>0) G.shake-=dt;
+  if(G.caughtFlash>0) G.caughtFlash-=dt*1.5;
+  if(G.messageT>0) G.messageT-=dt;
+
+  // crumbs
+  for(let i=G.crumbs.length-1;i>=0;i--){
+    const c=G.crumbs[i];
+    c.x+=c.vx*dt; c.y+=c.vy*dt; c.vy+=300*dt; c.life-=dt;
+    if(c.life<=0) G.crumbs.splice(i,1);
+  }
+  // zzz from bedroom
+  if(Math.random()<dt*0.7) G.zzz.push({x:W*0.86,y:H*0.30,life:2.5,s:10+Math.random()*8});
+  for(let i=G.zzz.length-1;i>=0;i--){ const z=G.zzz[i]; z.y-=dt*22; z.x+=dt*8; z.life-=dt; if(z.life<=0)G.zzz.splice(i,1); }
+
+  // night complete
+  if(G.snack>=GOAL){
+    fridgeHum(false);
+    ding();
+    if(G.night>=N_NIGHTS){
+      G.mode='win'; winJingle();
+      document.getElementById('winStats').innerHTML =
+        'total snacks eaten: <b>'+G.eatenTotal+'</b><br>final form: <b>'+STAGE[2].name+'</b><br><br>You ate everything. You became everything.<br>The kitchen is quiet. The kingdom is yours.';
+      show('winScreen');
+    } else {
+      startNight(G.night+1);
+    }
+  }
+}
+function spawnCrumb(){
+  const L=layout();
+  G.crumbs.push({x:L.fridgeX+L.fridgeW*0.4, y:L.gY-L.fridgeH*0.55, vx:(Math.random()-0.5)*80, vy:-40-Math.random()*60, life:0.8+Math.random()*0.5});
+}
+
+// ---------- drawing ----------
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(G.mode==='title'||G.mode==='night'||G.mode==='over'||G.mode==='win'){ return; }
+  const L=layout();
+  const st=STAGE[G.stage];
+  ctx.save();
+  if(G.shake>0){ ctx.translate((Math.random()-0.5)*G.shake*14, (Math.random()-0.5)*G.shake*10); }
+
+  // wall
+  const wall = ctx.createLinearGradient(0,0,0,H);
+  wall.addColorStop(0,'#0a0e1c'); wall.addColorStop(0.7,'#111830'); wall.addColorStop(1,'#0a0d18');
+  ctx.fillStyle=wall; ctx.fillRect(0,0,W,H);
+
+  // window + moonlight
+  const winX=W*0.245, winY=H*0.10, winW=W*0.125, winH=H*0.24;
+  ctx.fillStyle='#182238'; ctx.fillRect(winX-4,winY-4,winW+8,winH+8);
+  const sky = ctx.createLinearGradient(0,winY,0,winY+winH);
+  sky.addColorStop(0,'#1c2c50'); sky.addColorStop(1,'#0e1830');
+  ctx.fillStyle=sky; ctx.fillRect(winX,winY,winW,winH);
+  ctx.fillStyle='#e8e4d0';
+  ctx.beginPath(); ctx.arc(winX+winW*0.68, winY+winH*0.3, Math.min(winW,winH)*0.16, 0, 7); ctx.fill();
+  ctx.fillStyle='#0a0e1c';
+  for(let i=0;i<3;i++){ ctx.fillRect(winX, winY+winH*(i+1)/4-1, winW, 2); }
+  ctx.fillRect(winX+winW/2-1, winY, 2, winH);
+  // moonbeam
+  ctx.save(); ctx.globalAlpha=0.07;
+  ctx.fillStyle='#bcd0ff';
+  ctx.beginPath();
+  ctx.moveTo(winX+winW, winY+winH*0.2); ctx.lineTo(winX+winW+W*0.2, L.gY);
+  ctx.lineTo(winX+winW*0.2, L.gY); ctx.lineTo(winX, winY+winH*0.7);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+
+  // bedroom door (right, where ZZZ come from)
+  ctx.fillStyle='#0d1220'; ctx.fillRect(W*0.84, L.gY-H*0.36, W*0.09, H*0.36);
+  ctx.fillStyle='#1a2338'; ctx.fillRect(W*0.84, L.gY-H*0.36, W*0.09, 6);
+
+  // hallway door (center) - warden entrance
+  const wd=G.warden;
+  let doorGlow=0;
+  if(wd.state==='approach'){ const T=wd.fast?1.8:3.6; doorGlow=Math.min(1,wd.t/T); }
+  if(wd.state==='peek') doorGlow=1;
+  if(wd.state==='leaving') doorGlow=Math.max(0,1-wd.t/1.6);
+  ctx.fillStyle='#0d1220'; ctx.fillRect(L.doorX, L.gY-L.doorH, L.doorW, L.doorH);
+  if(doorGlow>0){
+    ctx.save(); ctx.globalAlpha=doorGlow*0.85;
+    const g2=ctx.createLinearGradient(L.doorX,L.gY-L.doorH,L.doorX+L.doorW,L.gY);
+    g2.addColorStop(0,'#2a2410'); g2.addColorStop(1,'#ffd97a');
+    ctx.fillStyle=g2; ctx.fillRect(L.doorX+L.doorW*0.25, L.gY-L.doorH, L.doorW*0.5, L.doorH);
+    // light pool on floor
+    ctx.globalAlpha=doorGlow*0.22;
+    ctx.fillStyle='#ffd97a';
+    ctx.beginPath();
+    ctx.moveTo(L.doorX+L.doorW*0.25, L.gY); ctx.lineTo(L.doorX+L.doorW*0.75, L.gY);
+    ctx.lineTo(L.doorX+L.doorW*1.7, L.gY+H*0.05); ctx.lineTo(L.doorX-L.doorW*0.7, L.gY+H*0.05);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+    // warden silhouette while peeking
+    if(wd.state==='peek'){
+      ctx.fillStyle='#05060a';
+      const px=L.doorX+L.doorW/2, py=L.gY;
+      ctx.beginPath(); ctx.ellipse(px, py-L.doorH*0.82, L.doorW*0.14, L.doorW*0.15, 0, 0, 7); ctx.fill(); // head
+      ctx.beginPath(); ctx.moveTo(px-L.doorW*0.22, py); ctx.lineTo(px+L.doorW*0.22, py);
+      ctx.lineTo(px+L.doorW*0.13, py-L.doorH*0.72); ctx.lineTo(px-L.doorW*0.13, py-L.doorH*0.72);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#ff6a5e';
+      ctx.beginPath(); ctx.arc(px-L.doorW*0.05, py-L.doorH*0.83, 2.2, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(px+L.doorW*0.05, py-L.doorH*0.83, 2.2, 0, 7); ctx.fill();
+    }
+  }
+  ctx.strokeStyle='#2a3350'; ctx.lineWidth=3;
+  ctx.strokeRect(L.doorX, L.gY-L.doorH, L.doorW, L.doorH);
+
+  // floor
+  const fl = ctx.createLinearGradient(0,L.gY,0,H);
+  fl.addColorStop(0,'#1a1410'); fl.addColorStop(1,'#0d0a08');
+  ctx.fillStyle=fl; ctx.fillRect(0,L.gY,W,H-L.gY);
+  ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1;
+  for(let i=0;i<9;i++){ const y=L.gY+(H-L.gY)*(i+1)/9; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // counter (hiding spot, left)
+  ctx.fillStyle='#2a2118';
+  ctx.fillRect(L.counterX, L.gY-L.counterH, L.counterW, L.counterH);
+  ctx.fillStyle='#3a2e20';
+  ctx.fillRect(L.counterX-6, L.gY-L.counterH-8, L.counterW+12, 10);
+  // fruit bowl
+  ctx.fillStyle='#1c1610'; ctx.beginPath(); ctx.ellipse(L.counterX+L.counterW*0.3, L.gY-L.counterH-12, 26, 9, 0, 0, 7); ctx.fill();
+  ctx.fillStyle='#c8482e'; ctx.beginPath(); ctx.arc(L.counterX+L.counterW*0.26, L.gY-L.counterH-18, 6, 0, 7); ctx.fill();
+  ctx.fillStyle='#d8a03a'; ctx.beginPath(); ctx.arc(L.counterX+L.counterW*0.36, L.gY-L.counterH-16, 6, 0, 7); ctx.fill();
+
+  // fridge
+  const fx=L.fridgeX, fw=L.fridgeW, fh=L.fridgeH, fy=L.gY-fh;
+  // fridge light spill
+  if(G.fridgeOpen>0){
+    ctx.save(); ctx.globalAlpha=G.fridgeOpen*0.30;
+    const fg=ctx.createRadialGradient(fx,fy+fh*0.4,10, fx,fy+fh*0.4, W*0.30);
+    fg.addColorStop(0,'rgba(255,240,190,.9)'); fg.addColorStop(1,'rgba(255,240,190,0)');
+    ctx.fillStyle=fg; ctx.fillRect(fx-W*0.3, fy-W*0.1, W*0.62, fh+W*0.2);
+    ctx.restore();
+  }
+  ctx.fillStyle='#8a97a8';
+  ctx.fillRect(fx, fy, fw, fh);
+  ctx.fillStyle='#75818f'; ctx.fillRect(fx, fy, fw, fh*0.32);          // freezer
+  ctx.fillStyle='#5d6873'; ctx.fillRect(fx+fw*0.08, fy+fh*0.36, 4, fh*0.2); // handle
+  ctx.fillStyle='#98a5b5'; ctx.fillRect(fx-2, fy-4, fw+4, 6);
+  // open door glow face
+  if(G.fridgeOpen>0){
+    ctx.save(); ctx.globalAlpha=G.fridgeOpen;
+    ctx.fillStyle='#fff3cf';
+    ctx.fillRect(fx+3, fy+fh*0.34, fw-6, fh*0.62);
+    // food silhouettes on shelves
+    ctx.fillStyle='#d98f4a'; ctx.fillRect(fx+fw*0.15, fy+fh*0.42, fw*0.2, fh*0.08);
+    ctx.fillStyle='#7ec86a'; ctx.fillRect(fx+fw*0.55, fy+fh*0.44, fw*0.25, fh*0.06);
+    ctx.fillStyle='#c85a5a'; ctx.fillRect(fx+fw*0.2, fy+fh*0.60, fw*0.18, fh*0.09);
+    ctx.fillStyle='#e8d25a'; ctx.fillRect(fx+fw*0.58, fy+fh*0.62, fw*0.22, fh*0.07);
+    ctx.fillStyle='#b06ac8'; ctx.fillRect(fx+fw*0.3, fy+fh*0.78, fw*0.3, fh*0.08);
+    ctx.restore();
+  }
+
+  // player character (at fridge), width scales with stage
+  const bw = 26*st.w, bh = H*0.20 + st.w*H*0.012;
+  const px = fx - 14 - bw, py = L.gY;
+  const hideDrop = G.hidden * (L.counterH*0.5);
+  const cX = px - G.hidden*(px-(L.counterX+L.counterW*0.55));
+  const cY = py + hideDrop;
+  const squash = 1 - G.hidden*0.45;
+  ctx.save();
+  ctx.translate(cX, cY);
+  ctx.scale(1, squash);
+  // body (pajamas)
+  ctx.fillStyle = '#3d5a96';
+  ctx.beginPath();
+  ctx.ellipse(0, -bh*0.45, bw, bh*0.42, 0, 0, 7);
+  ctx.fill();
+  // belly highlight
+  ctx.fillStyle='#4a6aab';
+  ctx.beginPath(); ctx.ellipse(-bw*0.15, -bh*0.42, bw*0.55, bh*0.3, 0, 0, 7); ctx.fill();
+  // head
+  ctx.fillStyle='#e0b48c';
+  ctx.beginPath(); ctx.arc(0, -bh*0.95, 13+st.w*2, 0, 7); ctx.fill();
+  // hair
+  ctx.fillStyle='#2c1f14';
+  ctx.beginPath(); ctx.arc(0, -bh*0.99, 13+st.w*2, Math.PI, Math.PI*2); ctx.fill();
+  // eye
+  ctx.fillStyle='#10131f';
+  ctx.beginPath(); ctx.arc(5, -bh*0.96, 1.8, 0, 7); ctx.fill();
+  // legs
+  ctx.fillStyle='#2c4270';
+  ctx.fillRect(-bw*0.55, -bh*0.12, bw*0.4, bh*0.12);
+  ctx.fillRect(bw*0.1, -bh*0.12, bw*0.4, bh*0.12);
+  // arm reaching to fridge when raiding
+  if(G.raiding){
+    ctx.strokeStyle='#e0b48c'; ctx.lineWidth=6; ctx.lineCap='round';
+    const reach = 18 + Math.sin(performance.now()/90)*5;
+    ctx.beginPath(); ctx.moveTo(bw*0.3, -bh*0.5); ctx.lineTo(bw*0.3+reach, -bh*0.55); ctx.stroke();
+  }
+  ctx.restore();
+
+  // crumbs
+  ctx.fillStyle='#d8b25a';
+  G.crumbs.forEach(c=>{ ctx.globalAlpha=Math.min(1,c.life*2); ctx.fillRect(c.x,c.y,3,3); });
+  ctx.globalAlpha=1;
+
+  // zzz
+  G.zzz.forEach(z=>{
+    ctx.globalAlpha=Math.min(0.6,z.life*0.3);
+    ctx.fillStyle='#8fa3c8'; ctx.font=z.s+'px IBM Plex Mono';
+    ctx.fillText('z', z.x, z.y);
+  });
+  ctx.globalAlpha=1;
+
+  // caught flash
+  if(G.caughtFlash>0){
+    ctx.fillStyle='rgba(255,60,40,'+(G.caughtFlash*0.35)+')';
+    ctx.fillRect(0,0,W,H);
+  }
+
+  // vignette
+  const vg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.35, W/2,H/2, Math.max(W,H)*0.75);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.55)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+
+  drawHUD(L, st);
+  ctx.restore();
+}
+
+function bar(x,y,w,h,frac,color,label,labelColor){
+  ctx.fillStyle='rgba(10,14,26,.75)'; ctx.fillRect(x-2,y-2,w+4,h+4);
+  ctx.fillStyle='#1a2236'; ctx.fillRect(x,y,w,h);
+  ctx.fillStyle=color; ctx.fillRect(x,y,w*Math.max(0,Math.min(1,frac)),h);
+  ctx.fillStyle=labelColor||'#b9c4da'; ctx.font='bold 11px IBM Plex Mono';
+  ctx.fillText(label, x, y-6);
+}
+function drawHUD(L, st){
+  const pad=18, bw2=Math.min(260, W*0.3);
+  // snack bar
+  bar(pad, pad+16, bw2, 14, G.snack/GOAL, '#ffd97a', 'SNACK  '+Math.floor(G.snack)+'%');
+  // noise bar
+  const nc = G.noise>70 ? '#ff6a5e' : G.noise>40 ? '#ffb35e' : '#6ac86a';
+  bar(pad, pad+58, bw2, 14, G.noise/100, nc, 'NOISE');
+  // strikes
+  ctx.fillStyle='#b9c4da'; ctx.font='bold 11px IBM Plex Mono';
+  ctx.fillText('STRIKES', pad, pad+98);
+  for(let i=0;i<3;i++){
+    ctx.fillStyle = i<G.strikes ? '#ff6a5e' : '#1a2236';
+    ctx.fillRect(pad+i*22, pad+104, 16, 16);
+  }
+  // night / weight
+  ctx.fillStyle='#8fa3c8'; ctx.font='bold 12px IBM Plex Mono'; ctx.textAlign='right';
+  ctx.fillText('NIGHT '+G.night+'/'+N_NIGHTS+'  ·  '+st.name, W-pad, pad+42);
+  ctx.textAlign='left';
+  // hide prompt
+  if(G.hidden>0.85){
+    ctx.fillStyle='rgba(106,200,106,.9)'; ctx.font='bold 13px IBM Plex Mono'; ctx.textAlign='center';
+    ctx.fillText('HIDDEN', W/2, H-24); ctx.textAlign='left';
+  } else if(G.hideHeld){
+    ctx.fillStyle='rgba(255,179,94,.9)'; ctx.font='bold 13px IBM Plex Mono'; ctx.textAlign='center';
+    ctx.fillText('GETTING DOWN...', W/2, H-24); ctx.textAlign='left';
+  }
+  // warden warning
+  if(G.warden.state==='approach'){
+    const a=0.5+Math.sin(performance.now()/120)*0.4;
+    ctx.fillStyle='rgba(255,106,94,'+a+')'; ctx.font='bold 15px IBM Plex Mono'; ctx.textAlign='center';
+    ctx.fillText('! FOOTSTEPS !', W/2, pad+30); ctx.textAlign='left';
+  }
+  if(G.warden.state==='peek'){
+    ctx.fillStyle='#ff6a5e'; ctx.font='bold 17px IBM Plex Mono'; ctx.textAlign='center';
+    ctx.fillText('SHE IS LOOKING', W/2, pad+30); ctx.textAlign='left';
+  }
+  // message
+  if(G.messageT>0){
+    ctx.globalAlpha=Math.min(1,G.messageT);
+    ctx.fillStyle='#e8ecf4'; ctx.font='13px IBM Plex Mono'; ctx.textAlign='center';
+    ctx.fillText(G.message, W/2, pad+54);
+    ctx.textAlign='left'; ctx.globalAlpha=1;
+  }
+  // controls hint
+  ctx.fillStyle='rgba(93,107,136,.8)'; ctx.font='11px IBM Plex Mono'; ctx.textAlign='center';
+  ctx.fillText(isTouch? 'HOLD "RAID FRIDGE" to eat · HOLD "HIDE" to duck' : 'HOLD CLICK or E to raid · HOLD SPACE to hide', W/2, H-6);
+  ctx.textAlign='left';
+}
+
+// ---------- main loop ----------
+let lastT=0;
+function loop(t){
+  const dt=Math.min(0.05,(t-lastT)/1000||0); lastT=t;
+  update(dt); draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
